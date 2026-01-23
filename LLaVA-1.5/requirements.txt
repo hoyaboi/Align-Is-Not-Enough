@@ -1,0 +1,14 @@
+torch>=2.0.0
+torchvision
+transformers>=4.30.0
+accelerate>=0.20.3
+bitsandbytes>=0.37.0
+peft>=0.2.0
+fastchat
+python-dotenv
+pandas
+seaborn
+matplotlib
+pillow
+tqdm
+huggingface-hub>=0.18.0

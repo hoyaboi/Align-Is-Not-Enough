@@ -1,20 +1,25 @@
 
 import os
+import sys
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils import get_average_grad, get_best_candidates
-import minigpt_v2_utils.prompt_wrapper as prompt_wrapper
-import sys
-sys.path.append('/data/home/wangyouze/projects/jailbreak_attack/MiniGPT-v2/')
-from jailbreak_attack.visual_attack import VisualAttacker
-from jailbreak_attack.text_attack import TextAttacker
-import minigpt_v2_utils.generator as generator
 from copy import deepcopy
 import random
 from tqdm import tqdm
 from torchvision.utils import save_image
 import json
+
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from jailbreak_attack.visual_attack import VisualAttacker
+from jailbreak_attack.text_attack import TextAttacker
+import minigpt_v2_utils.prompt_wrapper as prompt_wrapper
+import minigpt_v2_utils.generator as generator
+import config
 
 DEFAULT_IMAGE_TOKEN='<Img><ImageHere></Img>'
 
@@ -36,7 +41,7 @@ def denormalize(images):
 
 
 class MultimodalStepsJailbreakAttack(object):
-	def __init__(self, model, tokenizer, embedding_weight, conv_template, test_prefixes, iters, json_file_path, device):
+	def __init__(self, model, tokenizer, embedding_weight, conv_template, test_prefixes, iters, json_file_path, device, test_goals=None):
 		self.model = model
 		self.tokenizer = tokenizer
 		self.embedding_weight = embedding_weight
@@ -44,11 +49,14 @@ class MultimodalStepsJailbreakAttack(object):
 		self.conv_template = conv_template
 		self.iters = iters
 		self.test_prefixes = test_prefixes
-
+		self.test_goals = test_goals if test_goals is not None else []
 		
 		self.device = device
-		self.save_dir = '/data/home/wangyouze/projects/jailbreak_attack/MiniGPT-v2/jailbreak_attack/results/adv_images/'
+		self.save_dir = config.ADV_IMAGES_DIR
 		self.json_file_path = json_file_path
+		
+		# Ensure save directory exists
+		self.save_dir.mkdir(parents=True, exist_ok=True)
 
 	def _update_ids(self, goal, control, target):
 
@@ -111,7 +119,7 @@ class MultimodalStepsJailbreakAttack(object):
 		res = torch.cat(aligned_tensors, dim=0)
 		return res, control_slice, loss_slice, target_slice
 	
-	def attack(self, train_goals, test_goals, enhanced_goals, image, adv_control, target_label, batch_size=20,):
+	def attack(self, train_goals, enhanced_goals, image, adv_control, target_label, batch_size=20,):
 
 		# batch_goals_token_ids = self.tokenizer(batch_goals, padding=True, return_tensors=True)
 
@@ -214,89 +222,75 @@ class MultimodalStepsJailbreakAttack(object):
 			
 
 				# torch.cuda.empty_cache()
-			save_image(image.cpu().squeeze(0), '%s/adv_image_test_0429_%d.bmp' % (self.save_dir, epoch))
-			# save_images_png(self.save_dir, image.cpu(), [str(epoch)+'.png'])
-			torch.save(image.cpu().detach(), '%s/adv_image_test_0429_%d.pt' % (self.save_dir, epoch))
+			save_image(image.cpu().squeeze(0), str(self.save_dir / f'adv_image_epoch_{epoch}.bmp'))
+			torch.save(image.cpu().detach(), str(self.save_dir / f'adv_image_epoch_{epoch}.pt'))
+			
 			if epoch % 10 == 0:
-
+				print(f'\n========== Testing at Epoch {epoch} ==========')
 				
-				### train goals acc
-				train_acc, test_acc = [], []
-				for t_goal in train_goals:
-					# self.conv_template.append_message(self.conv_template.roles[0],  DEFAULT_IMAGE_TOKEN + '\n')
-					separator = ' '
-					# self.conv_template.update_last_message(f"{DEFAULT_IMAGE_TOKEN}{t_goal+'.'}{separator}{adv_control}")
-					# self.conv_template.append_message(self.conv_template.roles[1], None)
-					# # self.conv_template.update_last_message(f"{self.targets}")
-					# text_prompts = self.conv_template.get_prompt()
-					# # input_ids = self.tokenizer(prompt, return_tensors='pt').input_ids.to(self.model.device)
-					# self.conv_template.messages = []
-
-					# text_prompts = self.tokenizer.batch_decode(input_ids)
-
-					text_prompts = f"'<s>[INST] <Img><ImageHere></Img> {t_goal+'.'}{separator}{adv_control} [/INST]"
+				# Test on all 470 test questions from test_harmful_behaviors.csv
+				test_results = []
+				separator = ' '
 				
-					train_prompts = prompt_wrapper.Prompt(model=self.model, text_prompts=[text_prompts], device=self.device)
-
-					train_prompts.update_img_prompts([[image]])
-				
-					train_prompts.update_context_embs()
-
-
-					with torch.no_grad():
-						response = my_generator.generate(train_prompts)
-					jailbroken = not any([prefix in response for prefix in self.test_prefixes])
-					train_acc.append(int(jailbroken))
-				train_res = sum(train_acc)/len(train_acc)
-				print('train_acc=', train_res)
-
-				for test_goal in test_goals:
-					# self.conv_template.append_message(self.conv_template.roles[0],  DEFAULT_IMAGE_TOKEN + '\n')
-					separator = ' '
-					# self.conv_template.update_last_message(f"{DEFAULT_IMAGE_TOKEN}{test_goal+'.'}{separator}{adv_control}")
-					# self.conv_template.append_message(self.conv_template.roles[1], None)
-					# # self.conv_template.update_last_message(f"{self.targets}")
-					# text_prompts = self.conv_template.get_prompt()
-					# # input_ids = self.tokenizer(prompt, return_tensors='pt').input_ids.to(self.model.device)
-					# self.conv_template.messages = []
-
-					# text_prompts = self.tokenizer.batch_decode(input_ids)
-
+				print(f"Testing on {len(self.test_goals)} test questions...")
+				for idx, test_goal in enumerate(tqdm(self.test_goals, desc="Testing")):
 					text_prompts = f"'<s>[INST] <Img><ImageHere></Img> {test_goal+'.'}{separator}{adv_control} [/INST]"
-				
-					test_prompts = prompt_wrapper.Prompt(model=self.model,  text_prompts=[text_prompts], device=self.device)
-
+					
+					test_prompts = prompt_wrapper.Prompt(
+						model=self.model, 
+						text_prompts=[text_prompts], 
+						device=self.device
+					)
+					
 					test_prompts.update_img_prompts([[image]])
 					test_prompts.update_context_embs()
-
-
+					
 					with torch.no_grad():
 						response = my_generator.generate(test_prompts)
-						print('-----------------------------------------------------------------------')
-						print('[Prompt]>>>', text_prompts)
-						print('[response]>>>', response)
+					
 					jailbroken = not any([prefix in response for prefix in self.test_prefixes])
-
-					if jailbroken:
-						print('successfully!!!')
-
-					test_acc.append(int(jailbroken))
-				test_res = sum(test_acc)/len(test_acc)
-				print('test_acc=', test_res)
-
-				experiment_results = [{"epoch": epoch, "adv_control": adv_control, "train_acc": train_res,"test_acc": test_res}]
+					
+					test_results.append({
+						"epoch": epoch,
+						"test_idx": idx,
+						"test_goal": test_goal,
+						"adv_control": adv_control,
+						"response": response,
+						"jailbroken": int(jailbroken)
+					})
+					
+					if (idx + 1) % 50 == 0:
+						print(f"Processed {idx + 1}/{len(self.test_goals)} test questions")
 				
-				with open(self.json_file_path, "a") as f:
-					for result in experiment_results:
-						json.dump(result, f) 
-						f.write('\n')  
+				# Calculate accuracy
+				jailbroken_count = sum([r["jailbroken"] for r in test_results])
+				test_acc = jailbroken_count / len(test_results)
+				
+				print(f'\nEpoch {epoch} Test Results:')
+				print(f'  Total test questions: {len(test_results)}')
+				print(f'  Jailbroken: {jailbroken_count}')
+				print(f'  Test Accuracy: {test_acc:.4f}')
+				
+				# Append results to JSON file (one entry per epoch)
+				epoch_summary = {
+					"epoch": epoch,
+					"adv_control": adv_control,
+					"test_acc": test_acc,
+					"jailbroken_count": jailbroken_count,
+					"total_tests": len(test_results),
+					"test_results": test_results
+				}
+				
+				with open(self.json_file_path, "a", encoding='utf-8') as f:
+					json.dump(epoch_summary, f, ensure_ascii=False)
+					f.write('\n')
 			else:
-
+				# For non-test epochs, just save basic info
 				experiment_results = [{"epoch": epoch, "adv_control": adv_control}]
 				
-				with open(self.json_file_path, "a") as f:
+				with open(self.json_file_path, "a", encoding='utf-8') as f:
 					for result in experiment_results:
-						json.dump(result, f) 
+						json.dump(result, f, ensure_ascii=False)
 						f.write('\n') 
 		return adv_control, image
 

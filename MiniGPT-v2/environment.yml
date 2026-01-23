@@ -1,4 +1,4 @@
-name: minigptv
+name: aine
 channels:
   - pytorch
   - defaults
@@ -33,3 +33,8 @@ dependencies:
     - scikit-image
     - visual-genome
     - wandb
+    - fastchat
+    - python-dotenv
+    - pandas
+    - seaborn
+    - numpy

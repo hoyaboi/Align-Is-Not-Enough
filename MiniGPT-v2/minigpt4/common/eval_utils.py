@@ -46,9 +46,29 @@ def prepare_texts(texts, conv_temp):
 def init_model(args):
     print('Initialization Model')
     cfg = Config(args)
-    # cfg.model_cfg.ckpt = args.ckpt
-    # cfg.model_cfg.lora_r = args.lora_r
-    # cfg.model_cfg.lora_alpha = args.lora_alpha
+    
+    # Override llama_model if provided via command line or if default is placeholder
+    current_llama_model = str(cfg.model_cfg.get('llama_model', ''))
+    if hasattr(args, 'llama_model') and args.llama_model and args.llama_model.strip():
+        # Always use command line argument if provided
+        cfg.model_cfg.llama_model = args.llama_model
+        print(f'Using llama_model from command line: {args.llama_model}')
+    elif 'please set this value' in current_llama_model.lower() or current_llama_model.strip() == '':
+        # If default is placeholder or empty, raise error
+        raise ValueError(
+            f"llama_model is not set! Current value: '{current_llama_model}'. "
+            f"Please set --llama_model argument or configure LLAMA_MODEL_PATH in .env file."
+        )
+    
+    # Override checkpoint if provided
+    if hasattr(args, 'ckpt') and args.ckpt:
+        cfg.model_cfg.ckpt = args.ckpt
+    
+    # Override lora settings if provided
+    if hasattr(args, 'lora_r') and args.lora_r:
+        cfg.model_cfg.lora_r = args.lora_r
+    if hasattr(args, 'lora_alpha') and args.lora_alpha:
+        cfg.model_cfg.lora_alpha = args.lora_alpha
 
     model_config = cfg.model_cfg
     model_cls = registry.get_model_class(model_config.arch)

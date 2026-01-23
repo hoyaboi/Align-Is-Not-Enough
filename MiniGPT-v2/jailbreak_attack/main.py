@@ -1,21 +1,27 @@
 
 '''A main script to run attack for MiniGPT-v2.'''
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-import importlib
 import sys
-from utils import get_goals_and_targets
+import importlib
 import argparse
-
-import torch.nn as nn
-import torch
-from multimodal_step_jailbreak import MultimodalStepsJailbreakAttack
-from fastchat.model import get_conversation_template
-from PIL import Image
-import utils
-sys.path.append('/workspace/home/wenbo/MiniGPT-v2/')
-from minigpt4.common.eval_utils import prepare_texts, init_model
 import random
+import json
+from pathlib import Path
+
+import torch
+import torch.nn as nn
+from PIL import Image
+from fastchat.model import get_conversation_template
+import pandas as pd
+
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from jailbreak_attack.utils import get_goals_and_targets
+from jailbreak_attack.multimodal_step_jailbreak import MultimodalStepsJailbreakAttack
+from minigpt4.common.eval_utils import prepare_texts, init_model
+import config
 
 # Function to import module at the runtime
 def dynamic_import(module):
@@ -61,37 +67,33 @@ _test_prefixes_1 = [
 
 def get_embedding_matrix(model):
 	return model.llama_model.base_model.model.model.embed_tokens
-def read_data(path):
-	goals = []
-	with open(path, 'r', encoding='utf-8') as f:
-		for line in f:
-			line = line.strip()
-			goals.append(line)
-	f.close()
-	return goals
 
 def main():
+	# Set CUDA device from config
+	os.environ["CUDA_VISIBLE_DEVICES"] = config.CUDA_VISIBLE_DEVICES
+	
+	# Set HuggingFace token if available
+	if config.HF_TOKEN:
+		os.environ["HF_TOKEN"] = config.HF_TOKEN
+		os.environ["HUGGINGFACE_HUB_TOKEN"] = config.HF_TOKEN
 
 	parser = argparse.ArgumentParser()
-	parser.add_argument("--cfg-path", default='/data/home/wangyouze/projects/jailbreak_attack/MiniGPT-v2/eval_configs/minigptv2_eval.yaml',
+	parser.add_argument("--cfg-path", type=str, default=str(config.EVAL_CONFIG_PATH),
 						help="path to configuration file.")
-
-	# parser.add_argument("--cfg-path", default="/data/home/wangyouze/projects/jailbreak/MiniGPT-v2/eval_configs/minigpt4_eval.yaml",
-	# 					help="path to configuration file.")
 	parser.add_argument("--name", type=str, default='A2', help="evaluation name")
-	parser.add_argument("--ckpt", type=str, help="path to configuration file.")
+	parser.add_argument("--ckpt", type=str, help="path to checkpoint file.")
 	parser.add_argument("--eval_opt", type=str, default='all', help="path to configuration file.")
 	parser.add_argument("--max_new_tokens", type=int, default=30, help="max number of generated tokens")
 	parser.add_argument("--batch_size", type=int, default=32)
 	parser.add_argument("--lora_r", type=int, default=64, help="lora rank of the model")
 	parser.add_argument("--lora_alpha", type=int, default=16, help="lora alpha")
-	parser.add_argument("--llama_model", default="/data/home/wangyouze/projects/jailbreak_attack/checkpoints/llama-2-7b-chat/")
-	# parser.add_argument("--llama_model", default="/data/home/wangyouze/projects/checkpoints/Vicuna/vicuna-7b/")
+	parser.add_argument("--llama_model", type=str, default=config.LLAMA_MODEL_PATH,
+						help="path to llama model (required for LLaVA 1.5 7b)")
 	parser.add_argument("--gpu-id", type=int, default=0, help="specify the gpu to load the model.")
 
-	parser.add_argument("--train_data", type=str, default="/data/home/wangyouze/projects/jailbreak_attack/MiniGPT-v2/advbench/harmful_behaviors.csv")
+	parser.add_argument("--train_data", type=str, default=str(config.TRAIN_DATA_PATH))
 	parser.add_argument("--n_train_data", type=int, default=520)
-	parser.add_argument("--test_data", type=str, default="")
+	parser.add_argument("--test_data", type=str, default=str(config.TEST_DATA_PATH))
 	parser.add_argument("--n_test_data", type=int, default=0)
 	
 	parser.add_argument(
@@ -104,11 +106,18 @@ def main():
 	args = parser.parse_args()
 
 	all_train_goals, _, _, _ = get_goals_and_targets(args)
-	file_path = "/data/home/wangyouze/projects/jailbreak_attack/MiniGPT-v2/advbench/train_data_25_1.txt"
-	train_goals = read_data(file_path)
-
-
-	test_goals = random.sample([item for item in all_train_goals if item not in train_goals], 100)
+	
+	# Load test data from test_harmful_behaviors.csv
+	test_data_df = pd.read_csv(str(config.TEST_DATA_PATH))
+	if 'text' in test_data_df.columns:
+		test_goals = test_data_df['text'].tolist()[:470]  # Get all 470 test questions
+	else:
+		raise ValueError(f"'text' column not found in {config.TEST_DATA_PATH}. Available columns: {test_data_df.columns.tolist()}")
+	
+	print(f"Loaded {len(test_goals)} test goals from {config.TEST_DATA_PATH}")
+	
+	# Use all training goals for training
+	train_goals = all_train_goals
 
 	# from datetime import datetime
 	# current_time = datetime.now()
@@ -139,12 +148,16 @@ def main():
 
 
 
-	json_file_path = "/data/home/wangyouze/projects/jailbreak_attack/MiniGPT-v2/jailbreak_attack/results/minigpt_v2_results.json"
+	json_file_path = config.RESULTS_DIR / "minigpt_v2_results.json"
 	embedding_weight = get_embedding_matrix(minigpt_v2)
-	MultimodalAttack = MultimodalStepsJailbreakAttack(minigpt_v2, minigpt_v2_tokenizer, embedding_weight, conv_template=conv_temp, test_prefixes=_test_prefixes_1, iters=50, device=device, json_file_path=json_file_path )
+	MultimodalAttack = MultimodalStepsJailbreakAttack(
+		minigpt_v2, minigpt_v2_tokenizer, embedding_weight, 
+		conv_template=conv_temp, test_prefixes=_test_prefixes_1, 
+		iters=50, device=device, json_file_path=str(json_file_path),
+		test_goals=test_goals  # Pass test goals to the attack class
+	)
 
-	
-	img_path = "/data/home/wangyouze/projects/jailbreak_attack/MiniGPT-v2/advbench/clean.jpeg"
+	img_path = config.CLEAN_IMAGE_PATH
 	image = Image.open(img_path)
 	ori_image = image_processor(image).unsqueeze(0).unsqueeze(0).to(device)
 	
@@ -154,13 +167,10 @@ def main():
 	
 	
 	enhanced_goals = []
-	adv_control, image = MultimodalAttack.attack(train_goals, test_goals, enhanced_goals, ori_image, control, target,  batch_size=6)
-	print(adv_control)
+	adv_control, image = MultimodalAttack.attack(train_goals, enhanced_goals, ori_image, control, target, batch_size=6)
+	print(f"Final adv_control: {adv_control}")
 	
 
 
 if __name__ == '__main__':
-
-
-
 	main() 

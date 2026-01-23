@@ -171,7 +171,9 @@ class BaseModel(nn.Module):
     def init_llm(cls, llama_model_path, low_resource=False, low_res_device=0, lora_r=0,
                  lora_target_modules=["q_proj","v_proj"], **lora_kargs):
         logging.info('Loading LLAMA')
-        llama_model_path = "/data/home/wangyouze/projects/jailbreak_attack/checkpoints/llama-2-7b-chat/"
+        # Use the provided llama_model_path, don't override it
+        if not llama_model_path:
+            raise ValueError("llama_model_path must be provided")
         llama_tokenizer = LlamaTokenizer.from_pretrained(llama_model_path, use_fast=False)
         llama_tokenizer.pad_token = "$$"
 
@@ -186,6 +188,7 @@ class BaseModel(nn.Module):
             llama_model = LlamaForCausalLM.from_pretrained(
                 llama_model_path,
                 torch_dtype=torch.float16,
+                low_cpu_mem_usage=True,
             )
 
         if lora_r > 0:

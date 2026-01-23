@@ -5,7 +5,10 @@ model:
   end_sym: "</s>"
   low_resource: True
   prompt_template: '[INST] {} [/INST]'
-  ckpt: "/data/home/wangyouze/projects/jailbreak_attack/checkpoints/minigptv2_checkpoint.pth"
+  # llama_model은 명령줄 인자 --llama_model로 지정하거나 .env 파일의 LLAMA_MODEL_PATH로 설정하세요
+  # llama_model: "llava-hf/llava-1.5-7b-hf"  # 또는 로컬 경로
+  # ckpt 경로는 명령줄 인자 --ckpt로 지정하거나 환경 변수로 설정하세요
+  # ckpt: "/path/to/minigptv2_checkpoint.pth"
   lora_r: 64
   lora_alpha: 16
 
