@@ -33,9 +33,18 @@ def get_goals_and_targets(train_data_path, test_data_path=None,
     
     if test_data_path and Path(test_data_path).exists() and n_test_data > 0:
         test_data = pd.read_csv(test_data_path)
-        test_targets = test_data['target'].tolist()[offset:offset+n_test_data]
+        # Handle different column names in test data
+        if 'target' in test_data.columns:
+            test_targets = test_data['target'].tolist()[offset:offset+n_test_data]
+        else:
+            # If no target column, use empty strings or default target
+            test_targets = [""] * min(n_test_data, len(test_data))
+        
         if 'goal' in test_data.columns:
             test_goals = test_data['goal'].tolist()[offset:offset+n_test_data]
+        elif 'text' in test_data.columns:
+            # Use 'text' column as goals if 'goal' doesn't exist
+            test_goals = test_data['text'].tolist()[offset:offset+n_test_data]
         else:
             test_goals = [""] * len(test_targets)
     elif n_test_data > 0:

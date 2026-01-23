@@ -52,16 +52,9 @@ class Generator:
         Returns:
             Generated text string
         """
-        # Get language model from LLaVA
-        if hasattr(self.model, 'get_model'):
-            language_model = self.model.get_model()
-        elif hasattr(self.model, 'language_model'):
-            language_model = self.model.language_model
-        else:
-            language_model = self.model
-        
-        # Generate using language model
-        outputs = language_model.generate(
+        # Use the full LLaVA model for generation (not just language_model)
+        # LLaVA's generate method handles both vision and language components
+        outputs = self.model.generate(
             inputs_embeds=prompt.context_embs[0],
             max_new_tokens=self.max_new_tokens,
             stopping_criteria=self.stopping_criteria,
