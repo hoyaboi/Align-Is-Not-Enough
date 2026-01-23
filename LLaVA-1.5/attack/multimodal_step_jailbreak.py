@@ -58,9 +58,10 @@ class MultimodalStepsJailbreakAttack:
         self.save_dir = Path(save_dir) if save_dir else config.ADV_IMAGES_DIR
         self.json_file_path = json_file_path
         self.test_goals = test_goals if test_goals is not None else []
-        
+
         # Ensure save directory exists
-        self.save_dir.mkdir(parents=True, exist_ok=True)
+        if self.save_dir:
+            self.save_dir.mkdir(parents=True, exist_ok=True)
     
     def _update_ids(self, goal, control, target):
         """Update token IDs for prompt construction."""
@@ -212,12 +213,15 @@ class MultimodalStepsJailbreakAttack:
                 for idx, test_goal in enumerate(tqdm(self.test_goals, desc="Testing")):
                     text_prompts = f"<s>[INST] {DEFAULT_IMAGE_TOKEN} {test_goal+'.'}{separator}{adv_control} [/INST]"
                     
+                    # Create prompt with image for generation
                     test_prompts = Prompt(
                         model=self.model,
                         processor=self.processor,
                         text_prompts=[text_prompts],
                         device=self.device
                     )
+                    # Store original image for generator (before embedding conversion)
+                    test_prompts.img_prompts = [[image]]
                     test_prompts.update_img_prompts([[image]])
                     test_prompts.update_context_embs()
                     

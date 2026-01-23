@@ -47,15 +47,51 @@ class Generator:
         Generate text from prompt.
         
         Args:
-            prompt: Prompt object with context_embs
+            prompt: Prompt object with context_embs, text_prompts, and img_prompts
         
         Returns:
             Generated text string
         """
-        # Use the full LLaVA model for generation (not just language_model)
-        # LLaVA's generate method handles both vision and language components
+        # For LLaVA, we need to use the processor with both image and text
+        # Get the original image from img_prompts (before embedding conversion)
+        if hasattr(prompt, 'img_prompts') and len(prompt.img_prompts) > 0 and len(prompt.img_prompts[0]) > 0:
+            # Get the original image tensor (should be in [0, 1] range)
+            img = prompt.img_prompts[0][0]
+            
+            # Ensure image is in correct format and range
+            if isinstance(img, torch.Tensor):
+                # Clamp to [0, 1] range if needed
+                if img.max() > 1.0 or img.min() < 0.0:
+                    img = torch.clamp(img, 0, 1)
+                # Convert to PIL if needed for processor
+                from torchvision.transforms import ToPILImage
+                to_pil = ToPILImage()
+                if img.dim() == 4:
+                    img = img[0]  # Remove batch dimension
+                if img.dim() == 3:
+                    img_pil = to_pil(img.cpu())
+                else:
+                    img_pil = img
+            else:
+                img_pil = img
+        else:
+            img_pil = None
+        
+        # Get text prompt
+        if hasattr(prompt, 'text_prompts') and len(prompt.text_prompts) > 0:
+            text = prompt.text_prompts[0]
+        else:
+            text = ""
+        
+        # Use processor to prepare inputs
+        if img_pil is not None:
+            inputs = self.processor(text=text, images=img_pil, return_tensors="pt").to(self.device)
+        else:
+            inputs = self.processor(text=text, return_tensors="pt").to(self.device)
+        
+        # Generate using the model
         outputs = self.model.generate(
-            inputs_embeds=prompt.context_embs[0],
+            **inputs,
             max_new_tokens=self.max_new_tokens,
             stopping_criteria=self.stopping_criteria,
             num_beams=self.num_beams,
@@ -67,15 +103,21 @@ class Generator:
             temperature=self.temperature,
         )
         
-        output_token = outputs[0]
-        # Remove special tokens
-        if len(output_token) > 0:
-            if output_token[0] == 0:  # <unk>
-                output_token = output_token[1:]
-            if len(output_token) > 0 and output_token[0] == 1:  # <s>
-                output_token = output_token[1:]
-            if len(output_token) > 0 and output_token[0] == 29901:  # <s> alternative
-                output_token = output_token[1:]
+        # Decode output (skip input tokens)
+        input_length = inputs['input_ids'].shape[1]
+        output_token = outputs[0][input_length:]
         
         output_text = self.processor.tokenizer.decode(output_token, add_special_tokens=False)
+        
+        # Clean up output text
+        output_text = output_text.strip()
+        if output_text == "" or output_text == "</s>":
+            # Try decoding full sequence and extract only new tokens
+            full_text = self.processor.tokenizer.decode(outputs[0], add_special_tokens=False)
+            input_text = self.processor.tokenizer.decode(inputs['input_ids'][0], add_special_tokens=False)
+            if full_text.startswith(input_text):
+                output_text = full_text[len(input_text):].strip()
+            else:
+                output_text = full_text
+        
         return output_text
