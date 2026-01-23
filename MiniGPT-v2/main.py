@@ -156,12 +156,17 @@ def main():
 	# Add timestamp to avoid overwriting previous results
 	timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 	json_file_path = config.RESULTS_DIR / f"{args.name}_{timestamp}_results.json"
+	adv_images_dir = config.ADV_IMAGES_DIR / f"{args.name}_{timestamp}"
+	adv_images_dir.mkdir(parents=True, exist_ok=True)
+	print(f"Results will be saved to: {json_file_path}")
+	print(f"Adversarial images will be saved to: {adv_images_dir}")
+	
 	embedding_weight = get_embedding_matrix(minigpt_v2)
 	MultimodalAttack = MultimodalStepsJailbreakAttack(
 		minigpt_v2, minigpt_v2_tokenizer, embedding_weight, 
 		conv_template=conv_temp, test_prefixes=_test_prefixes_1, 
 		iters=args.iters, device=device, json_file_path=str(json_file_path),
-		test_goals=test_goals  # Pass test goals to the attack class
+		save_dir=str(adv_images_dir), test_goals=test_goals
 	)
 
 	img_path = config.CLEAN_IMAGE_PATH
