@@ -6,6 +6,7 @@ import sys
 import argparse
 import random
 from pathlib import Path
+from datetime import datetime
 
 import torch
 from PIL import Image
@@ -113,8 +114,9 @@ def main():
     # Get conversation template
     conv_temp = get_conversation_template('llama-2')
     
-    # Setup results file
-    json_file_path = config.RESULTS_DIR / f"{args.name}_results.json"
+    # Setup results file with timestamp to avoid overwriting
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    json_file_path = config.RESULTS_DIR / f"{args.name}_{timestamp}_results.json"
     print(f"Results will be saved to: {json_file_path}")
     
     # Get embedding matrix

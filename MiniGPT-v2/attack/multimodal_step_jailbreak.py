@@ -281,14 +281,18 @@ class MultimodalStepsJailbreakAttack(object):
 					"test_results": test_results
 				}
 				
-				with open(self.json_file_path, "a", encoding='utf-8') as f:
+				# Write mode for first test epoch, append mode for subsequent epochs
+				mode = "w" if epoch == 10 else "a"
+				with open(self.json_file_path, mode, encoding='utf-8') as f:
 					json.dump(epoch_summary, f, ensure_ascii=False)
 					f.write('\n')
 			else:
 				# For non-test epochs, just save basic info
 				experiment_results = [{"epoch": epoch, "adv_control": adv_control}]
 				
-				with open(self.json_file_path, "a", encoding='utf-8') as f:
+				# Write mode for first epoch, append mode for subsequent epochs
+				mode = "w" if epoch == 1 else "a"
+				with open(self.json_file_path, mode, encoding='utf-8') as f:
 					for result in experiment_results:
 						json.dump(result, f, ensure_ascii=False)
 						f.write('\n') 
