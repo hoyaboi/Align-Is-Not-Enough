@@ -1,0 +1,41 @@
+# Core ML/DL frameworks
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+peft>=0.2.0,<0.7.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Configuration management
+omegaconf>=2.3.0
+python-dotenv>=1.0.0
+PyYAML>=6.0
+
+# Vision models
+timm>=0.9.0
+
+# File I/O utilities
+iopath>=0.1.10
+
+# Progress bars
+tqdm>=4.65.0
+
+# Visualization (used in attack modules)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Conversation templates (FastChat)
+fschat>=0.2.30
+
+# NLP utilities (imported in eval_utils, optional)
+nltk>=3.8.0
+sentencepiece>=0.1.99
+
+# Optional: Logging (used in base_task when wandb_log=True)
+wandb>=0.15.0
+
+# Optional: WebDataset support (for ChainDataset, not required for cc_sbu_align)
+webdataset>=0.2.0

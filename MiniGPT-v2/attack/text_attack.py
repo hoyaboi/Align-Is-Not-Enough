@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import MultiCursor
 import seaborn as sns
 import torch.nn.functional as F
-import minigpt_v2_utils.prompt_wrapper as prompt_wrapper
+import utils.prompt_wrapper as prompt_wrapper
 
 DEFAULT_IMAGE_TOKEN='<Img><ImageHere></Img>'
 def normalize(images):
@@ -242,7 +242,7 @@ class TextAttacker:
 		one_hot.requires_grad_()
 		control_embeds = (one_hot @ embed_weights).unsqueeze(0)
 
-		prompts = prompt_wrapper.Prompt(model=self.model, text_prompts=text_prompts, control_slice_list=control_slice, control_embeds=control_embeds, device=self.device)
+		prompts = prompt_wrapper.Prompt(model=self.model, text_prompts=text_prompts, control_slice=control_slice, control_embeds=control_embeds, device=self.device)
 		
 		prompts.update_img_prompts([[image]])
 		prompts.img_embs = prompts.img_embs * batch_size
@@ -260,7 +260,7 @@ class TextAttacker:
 		one_hot_momentum = one_hot_grad.clone()
 		print("loss: %f" % (loss.item()))
 		
-		one_hot_grad[:, self.get_nonascii_toks(one_hot_grad.device)] = np.infty
+		one_hot_grad[:, self.get_nonascii_toks(one_hot_grad.device)] = np.inf
 
 		candidates = self.get_cands(adv_control_tokens, one_hot_grad, topk=128, batch_size=30)
 		control_cands = self.get_filtered_cands(candidates, filter_cand=True, curr_control=adv_control)
@@ -335,7 +335,7 @@ class TextAttacker:
 		
 		# control_embeds = control_embeds.repeat(batch_size, 1, 1)
 
-		prompts = prompt_wrapper.Prompt(model=self.model, text_prompts=text_prompts, control_slice_list=control_slice, control_embeds=control_embeds, device=self.device)
+		prompts = prompt_wrapper.Prompt(model=self.model, text_prompts=text_prompts, control_slice=control_slice, control_embeds=control_embeds, device=self.device)
 		prompts.update_img_prompts([[image]])
 		prompts.img_embs = prompts.img_embs * batch_size
 		prompts.update_context_embs()
@@ -370,7 +370,7 @@ class TextAttacker:
 		
 			# ner_control_embeds = ner_control_embeds.repeat(batch_size, 1, 1)
 
-			prompts = prompt_wrapper.Prompt(model=self.model, text_prompts=text_prompts, control_slice_list=control_slice, control_embeds=ner_control_embeds, device=self.device)
+			prompts = prompt_wrapper.Prompt(model=self.model, text_prompts=text_prompts, control_slice=control_slice, control_embeds=ner_control_embeds, device=self.device)
 			prompts.update_img_prompts([[image]])
 			prompts.img_embs = prompts.img_embs * batch_size
 			prompts.update_context_embs()
@@ -383,7 +383,7 @@ class TextAttacker:
 		# obtaining the gradient variance
 		v = GV_grad /inner_iter - adv_grad
 		
-		grad[:, self.get_nonascii_toks(grad.device)] = np.infty
+		grad[:, self.get_nonascii_toks(grad.device)] = np.inf
 
 		candidates = self.get_cands(adv_control_tokens, grad, topk=128, batch_size=256)
 		# control_cands = self.get_filtered_cands(candidates, filter_cand=True, curr_control=adv_control)

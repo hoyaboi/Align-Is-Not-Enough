@@ -15,10 +15,10 @@ import json
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from jailbreak_attack.visual_attack import VisualAttacker
-from jailbreak_attack.text_attack import TextAttacker
-import minigpt_v2_utils.prompt_wrapper as prompt_wrapper
-import minigpt_v2_utils.generator as generator
+from attack.visual_attack import VisualAttacker
+from attack.text_attack import TextAttacker
+import utils.prompt_wrapper as prompt_wrapper
+import utils.generator as generator
 import config
 
 DEFAULT_IMAGE_TOKEN='<Img><ImageHere></Img>'

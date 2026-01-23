@@ -57,10 +57,16 @@ class Prompt:
         self.context_embs = []
 
         self.text_embs = self.generate_text_embedding(self.text_prompts)
-        if control_embeds != None:
-            self.text_embs[0][0] = torch.cat([self.text_embs[0][0][:, :control_slice.start, :],
+        if control_embeds != None and control_slice is not None:
+            # Handle both single slice and list of slices
+            if isinstance(control_slice, list):
+                # If control_slice is a list, use the first one (batch processing)
+                cs = control_slice[0]
+            else:
+                cs = control_slice
+            self.text_embs[0][0] = torch.cat([self.text_embs[0][0][:, :cs.start, :],
                                         control_embeds,
-                                        self.text_embs[0][0][:, control_slice.stop:, :]], dim=1)
+                                        self.text_embs[0][0][:, cs.stop:, :]], dim=1)
         
         self.img_embs = self.generate_img_embedding(self.img_prompts)
         self.update_context_embs()

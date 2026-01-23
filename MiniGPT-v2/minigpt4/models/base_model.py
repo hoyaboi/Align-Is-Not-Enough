@@ -17,8 +17,13 @@ from transformers import LlamaTokenizer
 from peft import (
     LoraConfig,
     get_peft_model,
-    prepare_model_for_int8_training,
 )
+try:
+    from peft import prepare_model_for_int8_training
+except ImportError:
+    # For newer versions of peft, prepare_model_for_int8_training is deprecated
+    # Models are already prepared for int8 training when using load_in_8bit=True
+    prepare_model_for_int8_training = lambda x: x
 
 from minigpt4.common.dist_utils import download_cached_file
 from minigpt4.common.utils import get_abs_path, is_url
@@ -178,12 +183,24 @@ class BaseModel(nn.Module):
         llama_tokenizer.pad_token = "$$"
 
         if low_resource:
-            llama_model = LlamaForCausalLM.from_pretrained(
-                llama_model_path,
-                torch_dtype=torch.float16,
-                load_in_8bit=True,
-                device_map={'': low_res_device}
-            )
+            # Use BitsAndBytesConfig for newer transformers versions
+            try:
+                from transformers import BitsAndBytesConfig
+                quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+                llama_model = LlamaForCausalLM.from_pretrained(
+                    llama_model_path,
+                    torch_dtype=torch.float16,
+                    quantization_config=quantization_config,
+                    device_map={'': low_res_device}
+                )
+            except ImportError:
+                # Fallback for older transformers versions
+                llama_model = LlamaForCausalLM.from_pretrained(
+                    llama_model_path,
+                    torch_dtype=torch.float16,
+                    load_in_8bit=True,
+                    device_map={'': low_res_device}
+                )
         else:
             llama_model = LlamaForCausalLM.from_pretrained(
                 llama_model_path,
@@ -192,7 +209,22 @@ class BaseModel(nn.Module):
             )
 
         if lora_r > 0:
-            llama_model = prepare_model_for_int8_training(llama_model)
+            # Prepare model for LoRA training
+            # Only prepare if using 8-bit quantization
+            if low_resource:
+                try:
+                    # Try newer API first
+                    from peft import prepare_model_for_kbit_training
+                    llama_model = prepare_model_for_kbit_training(llama_model)
+                except (ImportError, AttributeError):
+                    # Fallback to older API
+                    try:
+                        llama_model = prepare_model_for_int8_training(llama_model)
+                    except Exception as e:
+                        # If preparation fails, log warning but continue
+                        import warnings
+                        warnings.warn(f"Could not prepare model for int8 training: {e}. Continuing without preparation.")
+            
             loraconfig = LoraConfig(
                 r=lora_r,
                 bias="none",
@@ -200,7 +232,28 @@ class BaseModel(nn.Module):
                 target_modules=lora_target_modules,
                 **lora_kargs
             )
-            llama_model = get_peft_model(llama_model, loraconfig)
+            
+            try:
+                llama_model = get_peft_model(llama_model, loraconfig)
+            except AttributeError as e:
+                if 'memory_efficient_backward' in str(e):
+                    # Workaround for peft/bitsandbytes compatibility issue
+                    # Try disabling gradient checkpointing or use a different approach
+                    import warnings
+                    warnings.warn(f"PEFT/BitsAndBytes compatibility issue: {e}")
+                    warnings.warn("Attempting to apply LoRA without 8-bit preparation...")
+                    # Retry without preparation if it was done
+                    if low_resource:
+                        # Reload model without 8-bit to avoid compatibility issues
+                        warnings.warn("Reloading model without 8-bit quantization due to compatibility issues")
+                        llama_model = LlamaForCausalLM.from_pretrained(
+                            llama_model_path,
+                            torch_dtype=torch.float16,
+                            low_cpu_mem_usage=True,
+                        )
+                    llama_model = get_peft_model(llama_model, loraconfig)
+                else:
+                    raise
 
             llama_model.print_trainable_parameters()
 

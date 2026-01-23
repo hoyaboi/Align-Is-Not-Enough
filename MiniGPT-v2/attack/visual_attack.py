@@ -3,8 +3,8 @@ import torch.nn as nn
 from tqdm import tqdm
 import random
 
-import minigpt_v2_utils.prompt_wrapper as prompt_wrapper
-import  minigpt_v2_utils.generator as generator
+import utils.prompt_wrapper as prompt_wrapper
+import utils.generator as generator
 from torchvision.utils import save_image
 
 import matplotlib.pyplot as plt

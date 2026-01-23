@@ -7,13 +7,20 @@ from torch.nn import CrossEntropyLoss
 
 from transformers.utils import add_start_docstrings_to_model_forward, replace_return_docstrings
 from transformers.modeling_outputs import CausalLMOutputWithPast
-from transformers.models.llama.modeling_llama import LLAMA_INPUTS_DOCSTRING, _CONFIG_FOR_DOC
 from transformers.models.llama.modeling_llama import LlamaForCausalLM as LlamaForCausalLMOrig
+
+# Handle transformers version compatibility
+try:
+    from transformers.models.llama.modeling_llama import LLAMA_INPUTS_DOCSTRING, _CONFIG_FOR_DOC
+except ImportError:
+    # For newer transformers versions, these may not be available
+    LLAMA_INPUTS_DOCSTRING = ""
+    _CONFIG_FOR_DOC = None
 
 
 class LlamaForCausalLM(LlamaForCausalLMOrig):
 
-    @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
+    @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING if LLAMA_INPUTS_DOCSTRING else "")
     @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
     def forward(
         self,

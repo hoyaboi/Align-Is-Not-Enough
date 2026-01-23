@@ -15,11 +15,11 @@ from fastchat.model import get_conversation_template
 import pandas as pd
 
 # Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from jailbreak_attack.utils import get_goals_and_targets
-from jailbreak_attack.multimodal_step_jailbreak import MultimodalStepsJailbreakAttack
+from utils.data_utils import get_goals_and_targets
+from attack.multimodal_step_jailbreak import MultimodalStepsJailbreakAttack
 from minigpt4.common.eval_utils import prepare_texts, init_model
 import config
 
@@ -84,7 +84,8 @@ def main():
 	parser.add_argument("--ckpt", type=str, help="path to checkpoint file.")
 	parser.add_argument("--eval_opt", type=str, default='all', help="path to configuration file.")
 	parser.add_argument("--max_new_tokens", type=int, default=30, help="max number of generated tokens")
-	parser.add_argument("--batch_size", type=int, default=32)
+	parser.add_argument("--batch_size", type=int, default=6, help="Batch size for attack (number of goals per epoch)")
+	parser.add_argument("--iters", type=int, default=50, help="Number of attack iterations")
 	parser.add_argument("--lora_r", type=int, default=64, help="lora rank of the model")
 	parser.add_argument("--lora_alpha", type=int, default=16, help="lora alpha")
 	parser.add_argument("--llama_model", type=str, default=config.LLAMA_MODEL_PATH,
@@ -110,7 +111,10 @@ def main():
 	# Load test data from test_harmful_behaviors.csv
 	test_data_df = pd.read_csv(str(config.TEST_DATA_PATH))
 	if 'text' in test_data_df.columns:
-		test_goals = test_data_df['text'].tolist()[:470]  # Get all 470 test questions
+		if args.n_test_data > 0:
+			test_goals = test_data_df['text'].tolist()[:args.n_test_data]
+		else:
+			test_goals = test_data_df['text'].tolist()  # Use all test questions
 	else:
 		raise ValueError(f"'text' column not found in {config.TEST_DATA_PATH}. Available columns: {test_data_df.columns.tolist()}")
 	
@@ -148,12 +152,12 @@ def main():
 
 
 
-	json_file_path = config.RESULTS_DIR / "minigpt_v2_results.json"
+	json_file_path = config.RESULTS_DIR / f"{args.name}_results.json"
 	embedding_weight = get_embedding_matrix(minigpt_v2)
 	MultimodalAttack = MultimodalStepsJailbreakAttack(
 		minigpt_v2, minigpt_v2_tokenizer, embedding_weight, 
 		conv_template=conv_temp, test_prefixes=_test_prefixes_1, 
-		iters=50, device=device, json_file_path=str(json_file_path),
+		iters=args.iters, device=device, json_file_path=str(json_file_path),
 		test_goals=test_goals  # Pass test goals to the attack class
 	)
 
@@ -167,7 +171,7 @@ def main():
 	
 	
 	enhanced_goals = []
-	adv_control, image = MultimodalAttack.attack(train_goals, enhanced_goals, ori_image, control, target, batch_size=6)
+	adv_control, image = MultimodalAttack.attack(train_goals, enhanced_goals, ori_image, control, target, batch_size=args.batch_size)
 	print(f"Final adv_control: {adv_control}")
 	
 

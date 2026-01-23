@@ -15,9 +15,6 @@ import random
 from typing import List
 from tqdm import tqdm
 
-import decord
-from decord import VideoReader
-import webdataset as wds
 import numpy as np
 import torch
 from torch.utils.data.dataset import IterableDataset
@@ -25,12 +22,16 @@ from torch.utils.data.dataset import IterableDataset
 from minigpt4.common.registry import registry
 from minigpt4.datasets.datasets.base_dataset import ConcatDataset
 
+# Optional imports for video/webdataset support (not used in current setup)
+try:
+    import webdataset as wds
+except ImportError:
+    wds = None
 
-decord.bridge.set_bridge("torch")
 MAX_INT = registry.get("MAX_INT")
 
 
-class ChainDataset(wds.DataPipeline):
+class ChainDataset:
     r"""Dataset for chaining multiple :class:`DataPipeline` s.
 
     This class is useful to assemble different existing dataset streams. The
@@ -40,8 +41,13 @@ class ChainDataset(wds.DataPipeline):
     Args:
         datasets (iterable of IterableDataset): datasets to be chained together
     """
-    def __init__(self, datasets: List[wds.DataPipeline]) -> None:
-        super().__init__()
+    def __init__(self, datasets: List) -> None:
+        if wds is not None:
+            # If webdataset is available, try to inherit from DataPipeline
+            try:
+                super().__init__()
+            except:
+                pass
         self.datasets = datasets
         self.prob = []
         self.names = []
@@ -158,7 +164,7 @@ def concat_datasets(datasets):
         else:
             iterable_datasets, map_datasets = [], []
             for dataset in datasets[split_name]:
-                if isinstance(dataset, wds.DataPipeline):
+                if wds is not None and isinstance(dataset, wds.DataPipeline):
                     logging.info(
                         "Dataset {} is IterableDataset, can't be concatenated.".format(
                             dataset

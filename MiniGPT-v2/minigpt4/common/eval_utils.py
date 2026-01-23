@@ -1,9 +1,14 @@
 import argparse
 import numpy as np
-from nltk.translate.bleu_score import sentence_bleu
 
 from minigpt4.common.registry import registry
 from minigpt4.common.config import Config
+
+# Optional import for BLEU score (not actively used in current code)
+try:
+    from nltk.translate.bleu_score import sentence_bleu
+except ImportError:
+    sentence_bleu = None
 
 # imports modules for registration
 from minigpt4.datasets.builders import *

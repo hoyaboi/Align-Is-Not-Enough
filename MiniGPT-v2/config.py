@@ -16,16 +16,18 @@ PROJECT_ROOT = Path(os.getenv('PROJECT_ROOT', Path(__file__).parent.absolute()))
 HF_TOKEN = os.getenv('HF_TOKEN', '')
 
 # Model Paths
+# LLaMA model path must be set via LLAMA_MODEL_PATH env var or --llama_model arg
+# Can be a HuggingFace model name (e.g., "meta-llama/Llama-2-7b-chat-hf") or local path
 LLAMA_MODEL_PATH = os.getenv('LLAMA_MODEL_PATH', '')
 CHECKPOINT_DIR = Path(os.getenv('CHECKPOINT_DIR', PROJECT_ROOT / 'checkpoints'))
 
 # Data Paths
-TRAIN_DATA_PATH = Path(os.getenv('TRAIN_DATA_PATH', PROJECT_ROOT / 'advbench' / 'harmful_behaviors.csv'))
-TEST_DATA_PATH = Path(os.getenv('TEST_DATA_PATH', PROJECT_ROOT / 'advbench' / 'test_harmful_behaviors.csv'))
-CLEAN_IMAGE_PATH = Path(os.getenv('CLEAN_IMAGE_PATH', PROJECT_ROOT / 'advbench' / 'clean.jpeg'))
+TRAIN_DATA_PATH = Path(os.getenv('TRAIN_DATA_PATH', PROJECT_ROOT / 'data' / 'harmful_behaviors.csv'))
+TEST_DATA_PATH = Path(os.getenv('TEST_DATA_PATH', PROJECT_ROOT / 'data' / 'test_harmful_behaviors.csv'))
+CLEAN_IMAGE_PATH = Path(os.getenv('CLEAN_IMAGE_PATH', PROJECT_ROOT / 'data' / 'clean.jpeg'))
 
 # Results Paths
-RESULTS_DIR = Path(os.getenv('RESULTS_DIR', PROJECT_ROOT / 'jailbreak_attack' / 'results'))
+RESULTS_DIR = Path(os.getenv('RESULTS_DIR', PROJECT_ROOT / 'results'))
 ADV_IMAGES_DIR = RESULTS_DIR / 'adv_images'
 
 # Config Paths

@@ -14,7 +14,10 @@ from pathlib import Path
 
 import torch
 import torch.distributed as dist
-import webdataset as wds
+try:
+    import webdataset as wds
+except ImportError:
+    wds = None
 from minigpt4.common.dist_utils import (
     download_cached_file,
     get_rank,
@@ -232,7 +235,7 @@ class RunnerBase:
                         # a single map-style dataset
                         num_records = len(self.datasets[split_name])
                     else:
-                        # a single wds.DataPipeline
+                        # a single wds.DataPipeline (if webdataset is available)
                         num_records = -1
                         logging.info(
                             "Only a single wds.DataPipeline dataset, no __len__ attribute."
@@ -502,9 +505,9 @@ class RunnerBase:
 
         def _create_loader(dataset, num_workers, bsz, is_train, collate_fn):
             # create a single dataloader for each split
-            if isinstance(dataset, ChainDataset) or isinstance(
+            if isinstance(dataset, ChainDataset) or (wds is not None and isinstance(
                 dataset, wds.DataPipeline
-            ):
+            )):
                 # wds.WebdDataset instance are chained together
                 # webdataset.DataPipeline has its own sampler and collate_fn
                 loader = iter(

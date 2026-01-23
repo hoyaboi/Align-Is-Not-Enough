@@ -36,12 +36,57 @@ from transformers.modeling_outputs import (
     SequenceClassifierOutput,
     TokenClassifierOutput,
 )
-from transformers.modeling_utils import (
-    PreTrainedModel,
-    apply_chunking_to_forward,
-    find_pruneable_heads_and_indices,
-    prune_linear_layer,
-)
+from transformers.modeling_utils import PreTrainedModel
+
+# Handle transformers version compatibility
+try:
+    from transformers.modeling_utils import (
+        apply_chunking_to_forward,
+        find_pruneable_heads_and_indices,
+        prune_linear_layer,
+    )
+except ImportError:
+    # For newer transformers versions, implement fallbacks
+    def apply_chunking_to_forward(forward_fn, chunk_size, chunk_dim, *input_tensors):
+        """Fallback implementation for apply_chunking_to_forward"""
+        if len(input_tensors) == 0:
+            return forward_fn(*input_tensors)
+        # Simple passthrough for compatibility
+        return forward_fn(*input_tensors)
+    
+    def find_pruneable_heads_and_indices(heads, n_heads, head_dim, already_pruned_heads):
+        """Fallback implementation"""
+        mask = torch.ones(n_heads, head_dim)
+        heads = set(heads) - set(already_pruned_heads)
+        for head in heads:
+            head = head - sum(1 for h in already_pruned_heads if h < head)
+            mask[head] = 0
+        mask = mask.view(-1).contiguous().eq(1)
+        index = torch.arange(len(mask))[mask].long()
+        return mask, index
+    
+    def prune_linear_layer(layer, index, dim=0):
+        """Fallback implementation"""
+        index = index.to(layer.weight.device)
+        W = layer.weight.index_select(dim, index).clone().detach()
+        if layer.bias is not None:
+            if dim == 1:
+                b = layer.bias.clone().detach()
+            else:
+                b = layer.bias[index].clone().detach()
+        else:
+            b = None
+        new_size = list(layer.weight.size())
+        new_size[dim] = len(index)
+        new_layer = nn.Linear(new_size[1], new_size[0], bias=layer.bias is not None)
+        new_layer.weight.requires_grad = False
+        new_layer.weight.copy_(W.contiguous())
+        new_layer.weight.requires_grad = True
+        if b is not None:
+            new_layer.bias.requires_grad = False
+            new_layer.bias.copy_(b.contiguous())
+            new_layer.bias.requires_grad = True
+        return new_layer
 from transformers.utils import logging
 from transformers.models.bert.configuration_bert import BertConfig
 
