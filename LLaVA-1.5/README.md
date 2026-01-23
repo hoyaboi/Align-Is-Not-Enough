@@ -74,9 +74,3 @@ python main.py \
 - Attack results are saved to `results/{name}_results.json`
 - Every 10 epochs, the attack is evaluated on all test questions (470 questions) and results are saved
 - Adversarial images are saved to `results/adv_images/`
-
-## Notes
-
-- The default batch size is set to 2 for LLaVA-1.5-7B to fit in ~16GB GPU memory
-- For larger models (13B, 34B), reduce batch size or use `--load_in_8bit` flag
-- The attack uses the same harmful behavior dataset from GCG as MiniGPT-v2
