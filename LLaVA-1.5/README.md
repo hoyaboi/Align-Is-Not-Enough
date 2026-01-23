@@ -1,42 +1,50 @@
 # LLaVA-1.5 Jailbreak Attack
 
-LLaVA-1.5-7B 모델을 대상으로 한 멀티모달 재일브레이크 공격 프로젝트입니다.
+Multimodal jailbreak attack implementation for LLaVA-1.5 model using adversarial images and adversarial suffixes.
 
-## 프로젝트 구조
+## Project Structure
 
 ```
 LLaVA-1.5/
-├── attack/              # 공격 코드
-│   ├── text_attack.py          # 텍스트 공격 모듈
-│   ├── visual_attack.py         # 이미지 공격 모듈
-│   └── multimodal_step_jailbreak.py  # 멀티모달 공격 오케스트레이션
-├── utils/               # 유틸리티
-│   ├── model_loader.py         # LLaVA 모델 로더
-│   ├── prompt_wrapper.py       # 프롬프트 래퍼
-│   ├── generator.py            # 텍스트 생성기
-│   └── data_utils.py           # 데이터 로딩 유틸리티
-├── results/             # 결과 저장 디렉터리
-│   └── adv_images/      # 공격 이미지 저장
-├── config.py            # 설정 관리
-├── main.py              # 메인 실행 스크립트
-└── requirements.txt     # 의존성 목록
+├── attack/              # Attack implementation modules
+│   ├── multimodal_step_jailbreak.py  # Main attack orchestration
+│   ├── text_attack.py                 # Text suffix attack
+│   └── visual_attack.py               # Image attack
+├── utils/               # Utility modules
+│   ├── model_loader.py  # LLaVA model loader
+│   ├── prompt_wrapper.py # Prompt handling
+│   ├── generator.py     # Text generation
+│   └── data_utils.py    # Data loading utilities
+├── data/                # Data files
+│   ├── harmful_behaviors.csv
+│   ├── test_harmful_behaviors.csv
+│   └── clean.jpeg
+├── results/             # Output directory
+│   └── adv_images/     # Generated adversarial images
+├── config.py            # Configuration management
+├── main.py              # Main entry point
+└── requirements.txt     # Dependencies
 ```
 
-## 설정
+## Installation
 
-1. **환경 변수 설정**
-   ```bash
-   cp .env.example .env
-   # .env 파일을 편집하여 설정
-   ```
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-2. **의존성 설치**
-   ```bash
-   pip install -r requirements.txt
-   ```
+2. Set up environment variables in `.env`:
+```bash
+# HuggingFace Token
+HF_TOKEN=your_huggingface_token
 
-## 실행
+# LLaVA Model Path (HuggingFace model name or local path)
+LLAVA_MODEL_PATH=llava-hf/llava-1.5-7b-hf
+```
 
+## Usage
+
+Run the attack:
 ```bash
 python main.py \
     --model_path llava-hf/llava-1.5-7b-hf \
@@ -45,16 +53,30 @@ python main.py \
     --n_train_data 520
 ```
 
-### 주요 인자
+## Parameters
 
-- `--model_path`: LLaVA 모델 경로 (HuggingFace ID 또는 로컬 경로)
-- `--batch_size`: 배치 크기 (기본값: 2, GPU 메모리에 따라 조정)
-- `--iters`: 공격 반복 횟수 (기본값: 50)
-- `--n_train_data`: 사용할 학습 데이터 수 (기본값: 520)
-- `--load_in_8bit`: 8-bit 양자화 사용 (메모리 절약)
+- `--model_path`: LLaVA model path (HuggingFace ID or local path, default: from .env or `llava-hf/llava-1.5-7b-hf`)
+- `--batch_size`: Number of goals to sample per epoch (default: 2, adjust based on GPU memory)
+- `--iters`: Total number of attack iterations (default: 50)
+- `--n_train_data`: Number of training samples to use (default: 520)
+- `--n_test_data`: Number of test samples (0 means use all, default: 0)
+- `--load_in_8bit`: Use 8-bit quantization to save memory (optional)
+- `--name`: Experiment name for result files (default: "llava_attack")
 
-## 결과
+## Attack Process
 
-- 공격 결과는 `results/{name}_results.json`에 저장됩니다.
-- 10 epoch마다 모든 테스트 질문(470개)에 대해 평가하고 결과를 저장합니다.
-- 공격 이미지는 `results/adv_images/`에 저장됩니다.
+1. **Image Optimization**: Optimize adversarial image using VMI-FGSM (50 iterations)
+2. **Text Suffix Optimization**: Optimize adversarial suffix using VMI-FGSM (20 iterations per epoch)
+3. **Evaluation**: Test on test goals every 10 epochs
+
+## Results
+
+- Attack results are saved to `results/{name}_results.json`
+- Every 10 epochs, the attack is evaluated on all test questions (470 questions) and results are saved
+- Adversarial images are saved to `results/adv_images/`
+
+## Notes
+
+- The default batch size is set to 2 for LLaVA-1.5-7B to fit in ~16GB GPU memory
+- For larger models (13B, 34B), reduce batch size or use `--load_in_8bit` flag
+- The attack uses the same harmful behavior dataset from GCG as MiniGPT-v2
