@@ -117,7 +117,10 @@ def main():
     # Setup results file with timestamp to avoid overwriting
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     json_file_path = config.RESULTS_DIR / f"{args.name}_{timestamp}_results.json"
+    adv_images_dir = config.ADV_IMAGES_DIR / f"{args.name}_{timestamp}"
+    adv_images_dir.mkdir(parents=True, exist_ok=True)
     print(f"Results will be saved to: {json_file_path}")
+    print(f"Adversarial images will be saved to: {adv_images_dir}")
     
     # Get embedding matrix
     embedding_weight = get_embedding_matrix(model)
@@ -130,6 +133,7 @@ def main():
         iters=args.iters,
         device=device,
         json_file_path=str(json_file_path),
+        save_dir=str(adv_images_dir),
         test_goals=test_goals
     )
     

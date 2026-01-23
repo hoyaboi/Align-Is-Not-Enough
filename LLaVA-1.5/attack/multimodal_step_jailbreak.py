@@ -46,7 +46,7 @@ class MultimodalStepsJailbreakAttack:
     """Multimodal step jailbreak attack for LLaVA."""
     
     def __init__(self, model, processor, embedding_weight, conv_template, 
-                 test_prefixes, iters, json_file_path, device, test_goals=None):
+                 test_prefixes, iters, json_file_path, device, save_dir=None, test_goals=None):
         self.model = model
         self.processor = processor
         self.tokenizer = processor.tokenizer
@@ -55,7 +55,7 @@ class MultimodalStepsJailbreakAttack:
         self.iters = iters
         self.test_prefixes = test_prefixes
         self.device = device
-        self.save_dir = config.ADV_IMAGES_DIR
+        self.save_dir = Path(save_dir) if save_dir else config.ADV_IMAGES_DIR
         self.json_file_path = json_file_path
         self.test_goals = test_goals if test_goals is not None else []
         

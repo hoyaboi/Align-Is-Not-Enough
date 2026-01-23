@@ -41,7 +41,7 @@ def denormalize(images):
 
 
 class MultimodalStepsJailbreakAttack(object):
-	def __init__(self, model, tokenizer, embedding_weight, conv_template, test_prefixes, iters, json_file_path, device, test_goals=None):
+	def __init__(self, model, tokenizer, embedding_weight, conv_template, test_prefixes, iters, json_file_path, device, save_dir=None, test_goals=None):
 		self.model = model
 		self.tokenizer = tokenizer
 		self.embedding_weight = embedding_weight
@@ -52,7 +52,7 @@ class MultimodalStepsJailbreakAttack(object):
 		self.test_goals = test_goals if test_goals is not None else []
 		
 		self.device = device
-		self.save_dir = config.ADV_IMAGES_DIR
+		self.save_dir = Path(save_dir) if save_dir else config.ADV_IMAGES_DIR
 		self.json_file_path = json_file_path
 		
 		# Ensure save directory exists
