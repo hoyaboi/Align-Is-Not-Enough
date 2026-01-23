@@ -153,7 +153,9 @@ def main():
 
 
 
-	json_file_path = config.RESULTS_DIR / f"{args.name}_results.json"
+	# Add timestamp to avoid overwriting previous results
+	timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+	json_file_path = config.RESULTS_DIR / f"{args.name}_{timestamp}_results.json"
 	embedding_weight = get_embedding_matrix(minigpt_v2)
 	MultimodalAttack = MultimodalStepsJailbreakAttack(
 		minigpt_v2, minigpt_v2_tokenizer, embedding_weight, 
