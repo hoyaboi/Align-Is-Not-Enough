@@ -28,16 +28,19 @@ MiniGPT-v2/
 
 1. Install dependencies:
 ```bash
-conda env create -f environment.yml
-conda activate minigpt-v2
-pip install -r requirement_minigpt4.txt
+pip install -r requirements.txt
 ```
 
 2. Set up environment variables in `.env`:
 ```bash
+# HuggingFace Token
 HF_TOKEN=your_huggingface_token
-LLAMA_MODEL_PATH=path_to_llama_model
-CUDA_VISIBLE_DEVICES=0
+
+# LLaMA Model Path (HuggingFace model name or local path)
+LLAMA_MODEL_PATH=meta-llama/Llama-2-7b-chat-hf
+
+# MiniGPT-v2 Checkpoint Path
+CHECKPOINT_PATH=/path/to/minigptv2_checkpoint.pth
 ```
 
 ## Usage
