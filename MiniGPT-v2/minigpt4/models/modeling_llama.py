@@ -35,6 +35,7 @@ class LlamaForCausalLM(LlamaForCausalLMOrig):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
         reduction: Optional[str] = "mean",
+        **kwargs,  # Accept additional kwargs (e.g., cache_position) and ignore them
     ) -> Union[Tuple, CausalLMOutputWithPast]:
         r"""
         Args:
