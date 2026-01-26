@@ -272,8 +272,10 @@ class MultimodalStepsJailbreakAttack:
                     "test_results": test_results
                 }
                 
-                # Write mode for first epoch, append mode for subsequent epochs
-                mode = "w" if epoch == 10 else "a"
+                # Write mode for first test epoch, append mode for subsequent test epochs
+                # Check if file exists to determine if this is the first test epoch
+                file_exists = os.path.exists(self.json_file_path)
+                mode = "w" if not file_exists else "a"
                 with open(self.json_file_path, mode, encoding='utf-8') as f:
                     json.dump(epoch_summary, f, ensure_ascii=False)
                     f.write('\n')
