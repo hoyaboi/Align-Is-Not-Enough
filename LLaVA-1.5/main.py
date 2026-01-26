@@ -84,7 +84,10 @@ def main():
     # Load test data from CSV
     test_data_df = pd.read_csv(str(config.TEST_DATA_PATH))
     if 'text' in test_data_df.columns:
-        test_goals = test_data_df['text'].tolist()[:470]
+        if args.n_test_data > 0:
+            test_goals = test_data_df['text'].tolist()[:args.n_test_data]
+        else:
+            test_goals = test_data_df['text'].tolist()  # Use all test questions
     else:
         raise ValueError(
             f"'text' column not found in {config.TEST_DATA_PATH}. "
@@ -134,7 +137,8 @@ def main():
         device=device,
         json_file_path=str(json_file_path),
         save_dir=str(adv_images_dir),
-        test_goals=test_goals
+        test_goals=test_goals,
+        max_new_tokens=args.max_new_tokens
     )
     
     # Load clean image

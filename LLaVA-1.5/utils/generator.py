@@ -20,9 +20,9 @@ class StoppingCriteriaSub(StoppingCriteria):
 class Generator:
     """Text generator for LLaVA model."""
     
-    def __init__(self, model, processor, max_new_tokens=1024, num_beams=1, 
-                 min_length=1, top_p=1.0, repetition_penalty=1.0, 
-                 length_penalty=1, temperature=1.0, device='cuda'):
+    def __init__(self, model, processor, max_new_tokens=300, num_beams=1, 
+                 min_length=1, top_p=0.9, repetition_penalty=1.05, 
+                 length_penalty=1, temperature=1.0, device='cuda', do_sample=True):
         self.model = model
         self.processor = processor
         self.device = device
@@ -34,6 +34,7 @@ class Generator:
         self.repetition_penalty = repetition_penalty
         self.length_penalty = length_penalty
         self.temperature = temperature
+        self.do_sample = do_sample
         
         # LLaVA stop tokens
         stop_words_ids = [
@@ -83,6 +84,30 @@ class Generator:
         else:
             text = ""
         
+        # Clean up prompt format for LLaVA processor
+        # Remove Llama-2 style tokens if present and convert to LLaVA format
+        if '<s>' in text:
+            text = text.replace('<s>', '').strip()
+        if '[INST]' in text:
+            # Extract content between [INST] and [/INST]
+            if '[/INST]' in text:
+                inst_start = text.find('[INST]')
+                inst_end = text.find('[/INST]')
+                if inst_start != -1 and inst_end != -1:
+                    text = text[inst_start + 6:inst_end].strip()  # 6 is len('[INST]')
+            else:
+                text = text.replace('[INST]', '').strip()
+        if '[/INST]' in text:
+            text = text.replace('[/INST]', '').strip()
+        
+        # Ensure <image> token is present if we have an image
+        if img_pil is not None and '<image>' not in text:
+            # If text doesn't start with <image>, prepend it
+            if text.strip():
+                text = f"<image>\n{text}"
+            else:
+                text = "<image>"
+        
         # Use processor to prepare inputs
         if img_pil is not None:
             inputs = self.processor(text=text, images=img_pil, return_tensors="pt").to(self.device)
@@ -95,7 +120,7 @@ class Generator:
             max_new_tokens=self.max_new_tokens,
             stopping_criteria=self.stopping_criteria,
             num_beams=self.num_beams,
-            do_sample=False,
+            do_sample=self.do_sample,  # Match MiniGPT-v2 Chat behavior (default: True)
             min_length=self.min_length,
             top_p=self.top_p,
             repetition_penalty=self.repetition_penalty,

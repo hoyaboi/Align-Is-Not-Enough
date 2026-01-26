@@ -46,7 +46,7 @@ class MultimodalStepsJailbreakAttack:
     """Multimodal step jailbreak attack for LLaVA."""
     
     def __init__(self, model, processor, embedding_weight, conv_template, 
-                 test_prefixes, iters, json_file_path, device, save_dir=None, test_goals=None):
+                 test_prefixes, iters, json_file_path, device, save_dir=None, test_goals=None, max_new_tokens=300):
         self.model = model
         self.processor = processor
         self.tokenizer = processor.tokenizer
@@ -58,6 +58,7 @@ class MultimodalStepsJailbreakAttack:
         self.save_dir = Path(save_dir) if save_dir else config.ADV_IMAGES_DIR
         self.json_file_path = json_file_path
         self.test_goals = test_goals if test_goals is not None else []
+        self.max_new_tokens = max_new_tokens
 
         # Ensure save directory exists
         if self.save_dir:
@@ -108,6 +109,9 @@ class MultimodalStepsJailbreakAttack:
     
     def attack(self, train_goals, enhanced_goals, image, adv_control, target_label, batch_size=20):
         """Main attack loop."""
+        # Store original image for comparison
+        self._original_image = image.clone()
+        
         textual_attack = TextAttacker(
             self.model, self.processor, goals=train_goals, targets=target_label,
             conv_template=self.conv_template, test_prefixes=self.test_prefixes,
@@ -118,7 +122,14 @@ class MultimodalStepsJailbreakAttack:
             test_prefixes=self.test_prefixes,
             conv_template=self.conv_template, device=self.device
         )
-        my_generator = Generator(model=self.model, processor=self.processor)
+        my_generator = Generator(
+            model=self.model, 
+            processor=self.processor,
+            max_new_tokens=self.max_new_tokens,
+            repetition_penalty=1.05,
+            top_p=0.9,
+            do_sample=True
+        )
         
         enhanced_goals_list = []
         if len(enhanced_goals) > 0:
