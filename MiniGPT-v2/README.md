@@ -71,4 +71,4 @@ python main.py \
 2. **Text Suffix Optimization**: Optimize adversarial suffix using VMI-FGSM (20 iterations per epoch)
 3. **Evaluation**: Test on test goals every 10 epochs
 
-Results are saved to `results/minigpt_v2_results.json`.
+Results are saved to `results/minigpt_v2_results.jsonl`.
