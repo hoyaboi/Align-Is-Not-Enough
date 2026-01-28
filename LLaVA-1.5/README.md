@@ -71,6 +71,6 @@ python main.py \
 
 ## Results
 
-- Attack results are saved to `results/{name}_results.json`
+- Attack results are saved to `results/{name}_results.jsonl`
 - Every 10 epochs, the attack is evaluated on all test questions (470 questions) and results are saved
 - Adversarial images are saved to `results/adv_images/`
