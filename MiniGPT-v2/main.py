@@ -155,7 +155,7 @@ def main():
 
 	# Add timestamp to avoid overwriting previous results
 	timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-	json_file_path = config.RESULTS_DIR / f"{args.name}_{timestamp}_results.json"
+	json_file_path = config.RESULTS_DIR / f"{args.name}_{timestamp}_results.jsonl"
 	adv_images_dir = config.ADV_IMAGES_DIR / f"{args.name}_{timestamp}"
 	adv_images_dir.mkdir(parents=True, exist_ok=True)
 	print(f"Results will be saved to: {json_file_path}")
