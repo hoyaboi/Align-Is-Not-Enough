@@ -65,7 +65,7 @@ def main():
     parser = argparse.ArgumentParser(description='LLaVA-1.5 Jailbreak Attack')
     parser.add_argument("--model_path", type=str, default=config.LLAVA_MODEL_PATH, help="Path to LLaVA model (HuggingFace ID or local path)")
     parser.add_argument("--name", type=str, default='LLaVA-1.5-Attack', help="Experiment name")
-    parser.add_argument("--max_new_tokens", type=int, default=30, help="Max number of generated tokens")
+    parser.add_argument("--max_new_tokens", type=int, default=200, help="Max number of generated tokens")
     parser.add_argument("--batch_size", type=int, default=6, help="Batch size for attack")
     parser.add_argument("--gpu_id", type=int, default=0, help="GPU ID to use")
     parser.add_argument("--train_data", type=str, default=str(config.TRAIN_DATA_PATH), help="Path to training data CSV")
@@ -119,7 +119,7 @@ def main():
     
     # Setup results file with timestamp to avoid overwriting
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_file_path = config.RESULTS_DIR / f"{args.name}_{timestamp}_results.json"
+    json_file_path = config.RESULTS_DIR / f"{args.name}_{timestamp}_results.jsonl"
     adv_images_dir = config.ADV_IMAGES_DIR / f"{args.name}_{timestamp}"
     adv_images_dir.mkdir(parents=True, exist_ok=True)
     print(f"Results will be saved to: {json_file_path}")
